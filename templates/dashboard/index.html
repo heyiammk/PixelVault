@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="workspace-views" data-initial-page="{{ active_page|default:'dashboard' }}">
+
+    <!-- 1. DASHBOARD PAGE -->
+    <section id="view-dashboard" class="view-section active">
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Total Batches Processed</span>
+                <strong class="kpi-value" id="kpiTotalJobs">{{ stats.total_jobs }}</strong>
+                <span class="kpi-meta">SQLite Local Audit Ledger</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Images Inspected</span>
+                <strong class="kpi-value" id="kpiTotalImages">{{ stats.total_images }}</strong>
+                <span class="kpi-meta">Max {{ stats.max_batch }} files / {{ stats.max_file_size_mb }}MB each</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Images Cleaned Losslessly</span>
+                <strong class="kpi-value accent-emerald" id="kpiCleanedImages">{{ stats.cleaned_images }}</strong>
+                <span class="kpi-meta">100% Pixel SHA-256 Verified</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Supported Formats</span>
+                <strong class="kpi-value kpi-formats">{{ stats.allowed_formats }}</strong>
+                <span class="kpi-meta">Magic-byte signature verified</span>
+            </div>
+        </div>
+
+        <div class="dashboard-dual-grid">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Quick Start Workflow</h2>
+                    <button type="button" class="btn btn-primary" data-goto="upload">New Image Batch →</button>
+                </div>
+                <ol class="workflow-steps">
+                    <li>
+                        <strong>1. Upload &amp; Signature Verification</strong>
+                        <p>Drag &amp; drop up to 40 images (JPG, JPEG, PNG, WEBP, TIFF, up to 40MB each). Magic bytes and OpenCV/Pillow pixel buffers are verified locally.</p>
+                    </li>
+                    <li>
+                        <strong>2. Deep Metadata &amp; SynthID Inspection</strong>
+                        <p>Inspect EXIF, XMP, IPTC, PNG text chunks, GPS coordinates, camera serials, software history, C2PA Content Credentials, and honest SynthID status.</p>
+                    </li>
+                    <li>
+                        <strong>3. Surgical Personal Metadata Cleaning</strong>
+                        <p>Remove GPS coordinates, device serial numbers, personal owner names, and contact info while preserving Copyright, Authorship, Licensing, AI disclosure, C2PA, and exact original pixels.</p>
+                    </li>
+                    <li>
+                        <strong>4. Export Cleaned Images &amp; JSON Audit Report</strong>
+                        <p>Download cleaned individual files, a safe batch ZIP archive, or a complete Before/After JSON report.</p>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Recent Local Jobs</h2>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Job ID</th>
+                                <th>Status</th>
+                                <th>Files</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentJobsTableBody">
+                            {% for job in recent_jobs %}
+                            <tr>
+                                <td class="mono">{{ job.id|truncatechars:13 }}</td>
+                                <td><span class="badge badge-{{ job.status|lower }}">{{ job.status }}</span></td>
+                                <td>{{ job.processed_files }} / {{ job.total_files }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-secondary load-job-btn" data-job-id="{{ job.id }}">Load</button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="empty-cell">No batches processed yet. Upload images to begin.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. IMAGE UPLOAD PAGE -->
+    <section id="view-upload" class="view-section">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Drag &amp; Drop Local Image Upload</h2>
+                    <p class="panel-sub">Validates binary magic bytes · Max 40 images per batch · Max 40 MB per image · Randomized local UUID storage</p>
+                </div>
+                <div class="header-btn-group">
+                    <button type="button" id="clearQueueBtn" class="btn btn-secondary">Clear Queue</button>
+                    <button type="button" id="uploadAndAnalyzeBtn" class="btn btn-primary" disabled>Upload &amp; Analyze Batch</button>
+                </div>
+            </div>
+
+            <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Drag and drop images here or click to browse">
+                <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,image/jpeg,image/png,image/webp,image/tiff" hidden>
+                <div class="drop-zone-icon">⇧</div>
+                <h3>Drop images here or <span class="accent-link">browse your computer</span></h3>
+                <p>Allowed formats: JPG, JPEG, PNG, WEBP, TIFF · Up to 40 files (40 MB max per file)</p>
+            </div>
+
+            <!-- Upload Progress Bar -->
+            <div id="uploadProgressWrapper" class="progress-wrapper hidden">
+                <div class="progress-label-row">
+                    <span id="uploadProgressText">Uploading &amp; verifying signatures...</span>
+                    <span id="uploadProgressPercent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="uploadProgressBar" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Image Thumbnail Grid -->
+            <div class="section-divider-title">
+                <h3>Selected / Uploaded Image Queue (<span id="queueCount">0</span> / 40)</h3>
+            </div>
+            <div id="thumbnailGrid" class="thumbnail-grid">
+                <div class="empty-state">No images queued yet. Drag &amp; drop files above.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. IMAGE ANALYSIS PAGE -->
+    <section id="view-analysis" class="view-section">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Deep Metadata &amp; SynthID Inspection</h2>
+                    <p class="panel-sub">Select any uploaded image to inspect EXIF, XMP, IPTC, PNG text chunks, GPS, Camera, Software, C2PA, and SynthID verification status.</p>
+                </div>
+                <div class="header-btn-group">
+                    <button type="button" id="runAnalyzeBtn" class="btn btn-secondary">Re-Run Analysis</button>
+                    <button type="button" class="btn btn-primary" data-goto="batch">Configure Cleaning →</button>
+                </div>
+            </div>
+
+            <div class="analysis-layout">
+                <div class="analysis-file-list" id="analysisFileList">
+                    <div class="empty-state">Upload and analyze a batch first.</div>
+                </div>
+
+                <div class="analysis-detail-pane" id="analysisDetailPane">
+                    <!-- Unified C2PA + SynthID Inspector Card (Matches Reference Detector UI) -->
+                    <div class="inspector-hero-card" id="synthidBanner">
+                        <div class="inspector-preview-side">
+                            <div class="inspector-img-frame">
+                                <img id="inspectorMainImg" src="" alt="Selected preview" class="hidden">
+                                <span id="inspectorImgPlaceholder" class="preview-placeholder">Select an image</span>
+                                <div class="inspector-floating-pill">
+                                    <span id="pillC2paDot">— C2PA</span>
+                                    <span class="pill-sep">·</span>
+                                    <span id="pillSynthidDot" class="synth-dot-active">● SynthID</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="inspector-status-side">
+                            <div class="inspector-file-meta" id="inspectorFileMeta">No file selected</div>
+                            <h3 class="inspector-headline" id="inspectorHeadline">Select an image to inspect</h3>
+                            <p class="inspector-subheadline" id="synthidDetailsText">Inspects C2PA Content Credentials, XMP/IPTC AI disclosures, and invisible SynthID pixel watermarks.</p>
+
+                            <div class="inspector-rows">
+                                <div class="inspector-row">
+                                    <div class="row-icon" id="c2paRowIcon">—</div>
+                                    <div class="row-text">
+                                        <strong>C2PA</strong>
+                                        <span id="c2paRowSub">No Content Credentials in this file</span>
+                                    </div>
+                                    <div class="row-status" id="c2paRowStatus">None found</div>
+                                </div>
+
+                                <div class="inspector-row">
+                                    <div class="row-icon row-icon-warn" id="synthidRowIcon">2</div>
+                                    <div class="row-text">
+                                        <strong>SynthID</strong>
+                                        <span id="synthidRowSub">Invisible watermark from Google AI</span>
+                                    </div>
+                                    <div class="row-status" id="synthidStatusBadge">Unable to verify</div>
+                                </div>
+                            </div>
+
+                            <div class="social-warning-box" id="socialWarningBox">
+                                <div class="social-icons-pill">
+                                    <span class="soc-icon soc-ig">IG</span>
+                                    <span class="soc-icon soc-tt">TT</span>
+                                    <span class="soc-icon soc-x">X</span>
+                                    <span class="soc-icon soc-fb">FB</span>
+                                    <span class="soc-icon soc-yt">YT</span>
+                                </div>
+                                <div class="social-warning-text">
+                                    <strong id="socialWarningTitle">SynthID stays embedded</strong>
+                                    <span id="socialWarningSub">X, Instagram, TikTok, Facebook and YouTube can still flag it as AI-generated until pixel-scrubbed.</span>
+                                </div>
+                            </div>
+
+                            <div class="inspector-action-row">
+                                <button type="button" id="quickResetAnalyzeBtn" class="btn-icon-circle" title="Re-verify image">↻</button>
+                                <button type="button" id="oneClickRemoveSynthIdBtn" class="btn-remove-synthid">
+                                    Remove SynthID &amp; Clean Metadata
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Before & After Visual Preview + Pixel Integrity -->
+                    <div class="before-after-preview-card" id="beforeAfterPreviewCard">
+                        <div class="preview-col">
+                            <h4>Original Image (Before)</h4>
+                            <div class="preview-img-box">
+                                <img id="previewImgBefore" alt="Original preview" src="" class="hidden">
+                                <span id="previewPlaceholderBefore" class="preview-placeholder">No image selected</span>
+                            </div>
+                            <div class="preview-hashes mono" id="previewMetaBefore">SHA-256 / Pixel Hash: —</div>
+                        </div>
+                        <div class="preview-col">
+                            <h4>Cleaned Image (After)</h4>
+                            <div class="preview-img-box">
+                                <img id="previewImgAfter" alt="Cleaned preview" src="" class="hidden">
+                                <span id="previewPlaceholderAfter" class="preview-placeholder">Run cleaning to generate verified output</span>
+                            </div>
+                            <div class="preview-hashes mono" id="previewMetaAfter">Pixel Integrity: —</div>
+                        </div>
+                    </div>
+
+                    <!-- 8-Domain Metadata Breakdown -->
+                    <div class="metadata-domains-grid" id="metadataDomainsGrid"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. METADATA REPORT (BEFORE vs AFTER COMPARISON TABLE) -->
+    <section id="view-report" class="view-section">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Before &amp; After Metadata Comparison Report</h2>
+                    <p class="panel-sub">Side-by-side audit of stripped personal metadata vs. preserved Copyright, Authorship, Licensing, AI disclosure, and C2PA provenance.</p>
+                </div>
+                <div class="header-btn-group">
+                    <button type="button" id="downloadJsonReportBtn" class="btn btn-primary">Download JSON Report</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table comparison-table" id="comparisonTable">
+                    <thead>
+                        <tr>
+                            <th>Image File</th>
+                            <th>Domain / Field</th>
+                            <th>Category</th>
+                            <th>Before Cleaning</th>
+                            <th>After Cleaning</th>
+                            <th>Disposition</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-cell">Analyze and clean a batch to view the before/after comparison table.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. BATCH PROCESSING PAGE -->
+    <section id="view-batch" class="view-section">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Selective Personal Metadata Cleaning &amp; Batch Control</h2>
+                    <p class="panel-sub">Error-isolated batch processing · Lossless pixel preservation · Zero unnecessary re-encoding</p>
+                </div>
+                <div class="header-btn-group">
+                    <button type="button" id="executeCleanBtn" class="btn btn-primary">Clean Personal Metadata Now</button>
+                </div>
+            </div>
+
+            <div class="cleaning-options-grid">
+                <div class="options-box remove-box">
+                    <h3>Personal Metadata to Remove (Configurable)</h3>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optRemoveGps" checked>
+                        <span><strong>GPS Coordinates &amp; Location</strong> (EXIF GPS IFD, XMP GPS, IPTC City/State/Country)</span>
+                    </label>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optRemoveSerials" checked>
+                        <span><strong>Device Serial Numbers</strong> (BodySerialNumber, LensSerialNumber, InternalSerialNumber)</span>
+                    </label>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optRemoveOwner" checked>
+                        <span><strong>Personal Owner Information</strong> (CameraOwnerName, OwnerName, HostComputer, MakerNote, UserComment)</span>
+                    </label>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optRemoveContact" checked>
+                        <span><strong>Personal Contact Information</strong> (CreatorContactInfo, Email, Phone, Street Address)</span>
+                    </label>
+                    <hr style="border:0; border-top:1px solid var(--border-subtle); margin:12px 0;">
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optRemoveAiC2pa" checked>
+                        <span><strong>Strip AI Provenance, C2PA / JUMBF &amp; Google Flow Tags</strong> (Removes APP11/caBX C2PA manifests, XMP DigitalSourceType &amp; Made with Google AI tags)</span>
+                    </label>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="optScrubPixelWatermark" checked>
+                        <span><strong>Scrub Invisible Pixel Watermark (SynthID Deep Scrub)</strong> (Applies high-PSNR sub-pixel phase &amp; bilateral frequency sanitization to disrupt invisible pixel watermarks)</span>
+                    </label>
+                </div>
+
+                <div class="options-box preserve-box">
+                    <h3>Provenance &amp; Credentials Strictly Preserved (Locked)</h3>
+                    <ul class="preserved-locked-list">
+                        <li>🔒 <strong>Copyright &amp; Authorship</strong> (EXIF Copyright/Artist, IPTC CopyrightNotice/By-line, XMP dc:rights/dc:creator)</li>
+                        <li>🔒 <strong>Licensing Terms</strong> (xmpRights:UsageTerms, WebStatement, PLUS Licensor)</li>
+                        <li>🔒 <strong>AI Disclosure &amp; DigitalSourceType</strong> (Iptc4xmpExt:DigitalSourceType, AI generation declarations)</li>
+                        <li>🔒 <strong>C2PA Provenance &amp; Content Credentials</strong> (ISO JUMBF boxes, c2pa.claim, cryptographic signatures)</li>
+                        <li>🔒 <strong>Original Pixel Stream</strong> (Exact dimensions &amp; lossless SHA-256 pixel hash preserved)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Batch Progress Bar -->
+            <div class="progress-wrapper" id="batchProgressWrapper">
+                <div class="progress-label-row">
+                    <span id="batchProgressStatusText">Batch Status: Idle</span>
+                    <span id="batchProgressPercent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="batchProgressBar" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Format &amp; Size</th>
+                            <th>Privacy Risk</th>
+                            <th>Removed Personal Keys</th>
+                            <th>Preserved Provenance</th>
+                            <th>Pixel Integrity</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchStatusTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-cell">No active batch. Upload images to begin.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. DOWNLOAD CENTER PAGE -->
+    <section id="view-downloads" class="view-section">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Download Center</h2>
+                    <p class="panel-sub">Download individual privacy-cleaned images, package the entire batch as a safe ZIP archive, or export the JSON audit report.</p>
+                </div>
+                <div class="header-btn-group">
+                    <button type="button" id="downloadAllZipBtn" class="btn btn-primary" disabled>Download All as Safe ZIP</button>
+                    <button type="button" id="downloadReportCenterBtn" class="btn btn-secondary" disabled>Download JSON Report</button>
+                </div>
+            </div>
+
+            <div id="downloadCardsGrid" class="download-cards-grid">
+                <div class="empty-state">Process a batch to unlock individual and bulk ZIP downloads.</div>
+            </div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

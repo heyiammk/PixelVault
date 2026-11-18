@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Image Privacy Cleaner — Local-First Metadata & Provenance Suite{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-header">
+                <div class="brand-logo" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="brand-meta">
+                    <span class="brand-name">Image Privacy Cleaner</span>
+                    <span class="brand-badge">100% LOCAL ENGINE</span>
+                </div>
+            </div>
+
+            <nav class="side-nav" aria-label="Primary Navigation">
+                <button type="button" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" data-page="dashboard">
+                    <span class="nav-icon">◈</span>
+                    <span>Dashboard</span>
+                </button>
+                <button type="button" class="nav-link {% if active_page == 'upload' %}active{% endif %}" data-page="upload">
+                    <span class="nav-icon">⇧</span>
+                    <span>Image Upload</span>
+                </button>
+                <button type="button" class="nav-link {% if active_page == 'analysis' %}active{% endif %}" data-page="analysis">
+                    <span class="nav-icon">◎</span>
+                    <span>Image Analysis</span>
+                </button>
+                <button type="button" class="nav-link {% if active_page == 'report' %}active{% endif %}" data-page="report">
+                    <span class="nav-icon">▤</span>
+                    <span>Metadata Report</span>
+                </button>
+                <button type="button" class="nav-link {% if active_page == 'batch' %}active{% endif %}" data-page="batch">
+                    <span class="nav-icon">⚙</span>
+                    <span>Batch Processing</span>
+                </button>
+                <button type="button" class="nav-link {% if active_page == 'downloads' %}active{% endif %}" data-page="downloads">
+                    <span class="nav-icon">⇩</span>
+                    <span>Download Center</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-policy-card">
+                <h4>Ethical Provenance Policy</h4>
+                <ul>
+                    <li>✓ Strips GPS, Serials, Owner &amp; Contact</li>
+                    <li>✓ Preserves Copyright, Authorship &amp; License</li>
+                    <li>✓ Preserves C2PA &amp; AI Disclosure</li>
+                    <li>✓ Honest SynthID Status (No Watermark Removal)</li>
+                    <li>✓ 100% Lossless Pixel Integrity</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">
+                    <h1 id="pageTitle">Local Image Privacy &amp; Provenance Workspace</h1>
+                    <p class="subtitle">Zero external uploads · Lossless container surgical metadata cleaning · Cryptographic pixel verification</p>
+                </div>
+                <div class="top-bar-actions">
+                    <span class="status-pill status-local">
+                        <span class="dot"></span> Offline Local Mode Active
+                    </span>
+                    <span class="job-pill" id="activeJobBadge">No Active Batch</span>
+                </div>
+            </header>
+
+            <form id="csrfForm" style="display:none;">{% csrf_token %}</form>
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+    <script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>
