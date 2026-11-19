@@ -244,14 +244,15 @@
     <section id="view-report" class="view-section">
         <div class="panel-card">
             <div class="panel-header">
-                <div>
-                    <h2>Before &amp; After Metadata Comparison Report</h2>
-                    <p class="panel-sub">Side-by-side audit of stripped personal metadata vs. preserved Copyright, Authorship, Licensing, AI disclosure, and C2PA provenance.</p>
-                </div>
-                <div class="header-btn-group">
-                    <button type="button" id="downloadJsonReportBtn" class="btn btn-primary">Download JSON Report</button>
-                </div>
-            </div>
+                            <div>
+                                <h2>Before & After Metadata Comparison Report</h2>
+                                <p class="panel-sub">Side-by-side audit of stripped personal metadata vs. preserved Copyright, Authorship, Licensing, AI disclosure, and C2PA provenance.</p>
+                            </div>
+                            <div class="header-btn-group">
+                                <button type="button" id="clearReportBtn" class="btn btn-secondary">Clear Report</button>
+                                <button type="button" id="downloadJsonReportBtn" class="btn btn-primary">Download JSON Report</button>
+                            </div>
+                        </div>
 
             <div class="table-responsive">
                 <table class="data-table comparison-table" id="comparisonTable">
@@ -308,15 +309,20 @@
                         <span><strong>Personal Contact Information</strong> (CreatorContactInfo, Email, Phone, Street Address)</span>
                     </label>
                     <hr style="border:0; border-top:1px solid var(--border-subtle); margin:12px 0;">
-                    <label class="checkbox-row">
-                        <input type="checkbox" id="optRemoveAiC2pa" checked>
-                        <span><strong>Strip AI Provenance, C2PA / JUMBF &amp; Google Flow Tags</strong> (Removes APP11/caBX C2PA manifests, XMP DigitalSourceType &amp; Made with Google AI tags)</span>
-                    </label>
-                    <label class="checkbox-row">
-                        <input type="checkbox" id="optScrubPixelWatermark" checked>
-                        <span><strong>Scrub Invisible Pixel Watermark (SynthID Deep Scrub)</strong> (Applies high-PSNR sub-pixel phase &amp; bilateral frequency sanitization to disrupt invisible pixel watermarks)</span>
-                    </label>
-                </div>
+                                        <label class="checkbox-row">
+                                            <input type="checkbox" id="optRemoveAiC2pa" checked>
+                                            <span><strong>Strip AI Provenance, C2PA / JUMBF & Google Flow Tags</strong> (Removes APP11/caBX C2PA manifests, XMP DigitalSourceType & Made with Google AI tags)</span>
+                                        </label>
+                                        <label class="checkbox-row">
+                                            <input type="checkbox" id="optScrubPixelWatermark" checked>
+                                            <span><strong>Scrub Invisible Pixel Watermark (SynthID Deep Scrub)</strong> (Applies high-PSNR sub-pixel phase & bilateral frequency sanitization to disrupt invisible pixel watermarks)</span>
+                                        </label>
+                                        <hr style="border:0; border-top:1px solid var(--border-rose); margin:12px 0;">
+                                        <label class="checkbox-row" style="background: var(--color-accent-rose-soft); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-md);">
+                                            <input type="checkbox" id="optNuclearClean">
+                                            <span><strong>⚠ NUCLEAR CLEAN — Remove EVERYTHING</strong> (Strips ALL metadata including Copyright, Authorship, Licensing, C2PA, AI Disclosure + Deep Pixel Scrub. Output = Pure pixels only. IRREVERSIBLE.)</span>
+                                        </label>
+                                    </div>
 
                 <div class="options-box preserve-box">
                     <h3>Provenance &amp; Credentials Strictly Preserved (Locked)</h3>

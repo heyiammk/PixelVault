@@ -464,6 +464,11 @@
                 showToast("Please upload images before running metadata cleaning.", "warning");
                 return;
             }
+            const nuclear = document.getElementById("optNuclearClean")?.checked;
+            if (nuclear) {
+                const confirmed = confirm("⚠️ NUCLEAR CLEAN: This will strip ALL metadata including Copyright, Authorship, Licensing, C2PA, AI Disclosure + Deep Pixel Scrub.\n\nOutput = Pure pixels only. This is IRREVERSIBLE.\n\nContinue?");
+                if (!confirmed) return;
+            }
             executeCleanBtn.disabled = true;
             const payload = {
                 job_id: state.currentJobId,
@@ -473,6 +478,7 @@
                 remove_contact_info: document.getElementById("optRemoveContact").checked,
                 remove_ai_and_c2pa: document.getElementById("optRemoveAiC2pa") ? document.getElementById("optRemoveAiC2pa").checked : true,
                 scrub_pixel_watermark: document.getElementById("optScrubPixelWatermark") ? document.getElementById("optScrubPixelWatermark").checked : true,
+                nuclear_clean: nuclear,
             };
 
             try {
@@ -635,9 +641,10 @@
                 showToast("Upload an image batch first.", "warning");
                 return;
             }
+            const nuclear = confirm("⚠️ NUCLEAR CLEAN: Strip EVERYTHING (Copyright, C2PA, AI Disclosure + Deep Pixel Scrub)?\n\nOutput = Pure pixels only. IRREVERSIBLE.\n\nClick Cancel for standard clean (preserves Copyright/C2PA).");
             oneClickBtn.disabled = true;
             const origText = oneClickBtn.textContent;
-            oneClickBtn.textContent = "Scrubbing SynthID & C2PA from Pixels...";
+            oneClickBtn.textContent = nuclear ? "Nuclear Cleaning: Stripping EVERYTHING..." : "Scrubbing SynthID & C2PA from Pixels...";
 
             try {
                 const res = await fetch("/api/v1/clean/", {
@@ -654,19 +661,21 @@
                         remove_contact_info: true,
                         remove_ai_and_c2pa: true,
                         scrub_pixel_watermark: true,
+                        nuclear_clean: nuclear,
                     }),
                 });
                 const data = await res.json();
                 if (res.ok && data.status === "success") {
                     await fetchJobStatus(state.currentJobId, false);
-                    showToast("SynthID pixel watermark & all metadata scrubbed! Download from Download Center.", "success");
+                    showToast(nuclear ? "Nuclear clean complete. Pure pixels only." : "SynthID pixel watermark & all metadata scrubbed! Download from Download Center.", "success");
                 } else {
-                    showToast("Failed to scrub SynthID watermark.", "error");
+                    showToast("Cleaning encountered an error.", "error");
                 }
             } catch (err) {
                 showToast(`Error: ${err.message}`, "error");
             } finally {
                 oneClickBtn.disabled = false;
+                oneClickBtn.textContent = origText;
             }
         });
     }
@@ -675,6 +684,23 @@
     if (quickResetBtn) {
         quickResetBtn.addEventListener("click", () => {
             if (runAnalyzeBtn) runAnalyzeBtn.click();
+        });
+    }
+
+    // Clear Report Button
+    const clearReportBtn = document.getElementById("clearReportBtn");
+    if (clearReportBtn) {
+        clearReportBtn.addEventListener("click", () => {
+            state.metadataRecords = [];
+            state.currentJobId = null;
+            state.uploadedImages = [];
+            state.selectedFileId = null;
+            document.getElementById("activeJobBadge").textContent = "No Active Batch";
+            renderComparisonReport();
+            renderBatchView({ status: "IDLE", processed_files: 0, total_files: 0, failed_files: 0, progress_percentage: 0 });
+            renderDownloadCenter(null);
+            renderAnalysisView();
+            showToast("Report cleared.", "info");
         });
     }
 

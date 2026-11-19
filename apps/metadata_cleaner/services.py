@@ -260,7 +260,8 @@ def clean_jpeg_lossless(
     if not data.startswith(b"\xff\xd8"):
         raise ValueError("Not a valid JPEG file.")
 
-    remove_ai = options.get("remove_ai_and_c2pa", False)
+    nuclear = options.get("nuclear_clean", False)
+    remove_ai = nuclear or options.get("remove_ai_and_c2pa", False)
     removed_all: List[str] = []
     preserved_all: List[str] = []
 
@@ -291,7 +292,8 @@ def clean_jpeg_lossless(
                     remove_ai_and_c2pa=remove_ai,
                 )
                 removed_all.extend(rem)
-                preserved_all.extend(pres)
+                if not nuclear:
+                    preserved_all.extend(pres)
                 if cleaned_exif:
                     new_len = len(cleaned_exif) + 2
                     out.extend(b"\xff\xe1" + struct.pack(">H", new_len) + cleaned_exif)
@@ -331,7 +333,8 @@ def clean_jpeg_lossless(
                 if rem and not pres:
                     removed_all.extend(rem)
                 else:
-                    preserved_all.extend(pres)
+                    if not nuclear:
+                        preserved_all.extend(pres)
                     out.extend(data[idx:idx + 2 + seg_len])
         elif marker == 0xFE:
             if options.get("remove_owner_info", True) or remove_ai:
@@ -342,7 +345,8 @@ def clean_jpeg_lossless(
             if remove_ai:
                 removed_all.append("C2PA:JUMBF_Manifest_Stripped")
             else:
-                preserved_all.append("C2PA:JUMBF_Segment")
+                if not nuclear:
+                    preserved_all.append("C2PA:JUMBF_Segment")
                 out.extend(data[idx:idx + 2 + seg_len])
         else:
             out.extend(data[idx:idx + 2 + seg_len])
@@ -368,7 +372,8 @@ def clean_png_lossless(
     if not data.startswith(b"\x89PNG\r\n\x1a\n"):
         raise ValueError("Not a valid PNG file.")
 
-    remove_ai = options.get("remove_ai_and_c2pa", False)
+    nuclear = options.get("nuclear_clean", False)
+    remove_ai = nuclear or options.get("remove_ai_and_c2pa", False)
     removed_all: List[str] = []
     preserved_all: List[str] = []
 
@@ -432,12 +437,18 @@ def clean_png_lossless(
                 else:
                     out.extend(raw_full_chunk)
             elif any(p in key_lower for p in PROVENANCE_PNG_KEY_PATTERNS):
-                preserved_all.append(f"PNG:{key}")
-                out.extend(raw_full_chunk)
+                if not nuclear:
+                    preserved_all.append(f"PNG:{key}")
+                    out.extend(raw_full_chunk)
+                else:
+                    removed_all.append(f"PNG:{key}_NuclearStripped")
             elif any(p in key_lower for p in PERSONAL_PNG_KEY_PATTERNS):
                 removed_all.append(f"PNG:{key}")
             else:
-                out.extend(raw_full_chunk)
+                if not nuclear:
+                    out.extend(raw_full_chunk)
+                else:
+                    removed_all.append(f"PNG:{key}_NuclearStripped")
         elif chunk_type == "eXIf":
             if remove_ai:
                 removed_all.append("PNG:eXIf")
@@ -449,7 +460,8 @@ def clean_png_lossless(
                     remove_owner=options.get("remove_owner_info", True),
                 )
                 removed_all.extend(rem)
-                preserved_all.extend(pres)
+                if not nuclear:
+                    preserved_all.extend(pres)
                 if cleaned_exif:
                     raw_tiff = cleaned_exif[6:] if cleaned_exif.startswith(b"Exif\x00\x00") else cleaned_exif
                     out.extend(_make_png_chunk(b"eXIf", raw_tiff))
@@ -457,10 +469,18 @@ def clean_png_lossless(
             if remove_ai:
                 removed_all.append(f"PNG:C2PA:{chunk_type}_Stripped")
             else:
-                preserved_all.append(f"PNG:C2PA:{chunk_type}")
-                out.extend(raw_full_chunk)
+                if not nuclear:
+                    preserved_all.append(f"PNG:C2PA:{chunk_type}")
+                    out.extend(raw_full_chunk)
+                else:
+                    removed_all.append(f"PNG:C2PA:{chunk_type}_NuclearStripped")
         else:
-            out.extend(raw_full_chunk)
+            # In nuclear mode, strip all non-critical chunks (keep only IHDR, PLTE, IDAT, IEND)
+            critical_chunks = {"IHDR", "PLTE", "IDAT", "IEND", "tRNS", "cHRM", "gAMA", "iCCP", "sBIT", "sRGB", "pHYs", "tIME"}
+            if nuclear and chunk_type not in critical_chunks:
+                removed_all.append(f"PNG:{chunk_type}_NuclearStripped")
+            else:
+                out.extend(raw_full_chunk)
 
         offset += 12 + chunk_len
         if chunk_type == "IEND":
@@ -479,7 +499,8 @@ def clean_webp_lossless(
     if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
         raise ValueError("Not a valid WEBP file.")
 
-    remove_ai = options.get("remove_ai_and_c2pa", False)
+    nuclear = options.get("nuclear_clean", False)
+    remove_ai = nuclear or options.get("remove_ai_and_c2pa", False)
     removed_all: List[str] = []
     preserved_all: List[str] = []
 
@@ -505,7 +526,8 @@ def clean_webp_lossless(
                     remove_owner=options.get("remove_owner_info", True),
                 )
                 removed_all.extend(rem)
-                preserved_all.extend(pres)
+                if not nuclear:
+                    preserved_all.extend(pres)
                 if cleaned_exif:
                     raw_payload = cleaned_exif[6:] if cleaned_exif.startswith(b"Exif\x00\x00") else cleaned_exif
                     pad = b"\x00" if (len(raw_payload) % 2 == 1) else b""
@@ -530,12 +552,20 @@ def clean_webp_lossless(
             if remove_ai:
                 removed_all.append(f"WEBP:{fourcc_str}_Stripped")
             else:
-                preserved_all.append(f"WEBP:{fourcc_str}")
+                if not nuclear:
+                    preserved_all.append(f"WEBP:{fourcc_str}")
+                    pad = b"\x00" if (len(payload) % 2 == 1) else b""
+                    chunks_out.extend(fourcc + struct.pack("<I", len(payload)) + payload + pad)
+                else:
+                    removed_all.append(f"WEBP:{fourcc_str}_NuclearStripped")
+        else:
+            # In nuclear mode, strip all non-essential chunks (keep only VP8/VP8L/VP8X, ALPH, ANIM, ANMF, FRAM)
+            essential_chunks = {"VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF", "FRAM"}
+            if nuclear and fourcc_str not in essential_chunks:
+                removed_all.append(f"WEBP:{fourcc_str}_NuclearStripped")
+            else:
                 pad = b"\x00" if (len(payload) % 2 == 1) else b""
                 chunks_out.extend(fourcc + struct.pack("<I", len(payload)) + payload + pad)
-        else:
-            pad = b"\x00" if (len(payload) % 2 == 1) else b""
-            chunks_out.extend(fourcc + struct.pack("<I", len(payload)) + payload + pad)
 
         offset += 8 + sz + (sz % 2)
 
@@ -552,7 +582,8 @@ def clean_tiff_lossless(
 ) -> Tuple[List[str], List[str]]:
     removed_all: List[str] = []
     preserved_all: List[str] = []
-    remove_ai = options.get("remove_ai_and_c2pa", False)
+    nuclear = options.get("nuclear_clean", False)
+    remove_ai = nuclear or options.get("remove_ai_and_c2pa", False)
 
     with Image.open(src_path) as img:
         img.load()
@@ -579,9 +610,16 @@ def clean_tiff_lossless(
                 removed_all.append(f"TIFF:Tag_{t_id}")
                 del exif_obj[t_id]
 
-        for prov_id, name in ((TAG_COPYRIGHT, "TIFF:Copyright"), (TAG_ARTIST, "TIFF:Artist"), (TAG_IMAGE_DESCRIPTION, "TIFF:ImageDescription")):
-            if prov_id in exif_obj:
-                preserved_all.append(name)
+        if not nuclear:
+            for prov_id, name in ((TAG_COPYRIGHT, "TIFF:Copyright"), (TAG_ARTIST, "TIFF:Artist"), (TAG_IMAGE_DESCRIPTION, "TIFF:ImageDescription")):
+                if prov_id in exif_obj:
+                    preserved_all.append(name)
+        else:
+            # Nuclear: strip copyright/artist/description too
+            for prov_id, name in ((TAG_COPYRIGHT, "TIFF:Copyright"), (TAG_ARTIST, "TIFF:Artist"), (TAG_IMAGE_DESCRIPTION, "TIFF:ImageDescription")):
+                if prov_id in exif_obj:
+                    removed_all.append(f"{name}_NuclearStripped")
+                    del exif_obj[prov_id]
 
         img.save(dst_path, format="TIFF", exif=exif_obj.tobytes())
 
@@ -722,6 +760,20 @@ def clean_image_personal_metadata(
             "remove_contact_info": True,
             "remove_ai_and_c2pa": False,
             "scrub_pixel_watermark": False,
+            "nuclear_clean": False,
+        }
+
+    # Nuclear clean overrides all other options - strip EVERYTHING
+    nuclear = options.get("nuclear_clean", False)
+    if nuclear:
+        options = {
+            "remove_gps": True,
+            "remove_serial_numbers": True,
+            "remove_owner_info": True,
+            "remove_contact_info": True,
+            "remove_ai_and_c2pa": True,
+            "scrub_pixel_watermark": True,
+            "nuclear_clean": True,
         }
 
     dst_path.parent.mkdir(parents=True, exist_ok=True)
@@ -732,7 +784,7 @@ def clean_image_personal_metadata(
 
     if shutil.which(exiftool_path):
         shutil.copy2(src_path, dst_path)
-        if options.get("remove_ai_and_c2pa", False):
+        if nuclear or options.get("remove_ai_and_c2pa", False):
             cmd = [exiftool_path, "-overwrite_original", "-all=", str(dst_path)]
         else:
             cmd = [exiftool_path, "-overwrite_original"]
@@ -747,7 +799,7 @@ def clean_image_personal_metadata(
             cmd.append(str(dst_path))
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
         if proc.returncode == 0:
-            engine_used = "ExifToolSurgicalCleaner"
+            engine_used = "ExifToolSurgicalCleaner" if not nuclear else "ExifToolNuclearCleaner"
 
     work_src = dst_path if dst_path.exists() else src_path
     if fmt_upper in ("JPG", "JPEG"):

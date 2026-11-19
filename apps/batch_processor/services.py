@@ -241,10 +241,11 @@ def cleanup_expired_temp_files(max_age_hours: Optional[int] = None) -> int:
     Removes temporary files in media/temp/ older than max_age_hours.
     Returns count of deleted files.
     """
+    from pathlib import Path
     retention_hours = max_age_hours if max_age_hours is not None else settings.TEMP_FILE_RETENTION_HOURS
     cutoff = time.time() - (retention_hours * 3600)
     deleted = 0
-    for root_dir in (settings.TEMP_MEDIA_ROOT,):
+    for root_dir in (Path(settings.TEMP_MEDIA_ROOT),):
         if not root_dir.exists():
             continue
         for item in root_dir.iterdir():

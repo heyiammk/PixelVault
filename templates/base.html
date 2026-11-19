@@ -4,49 +4,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Image Privacy Cleaner — Local-First Metadata & Provenance Suite{% endblock %}</title>
+    <meta name="description" content="PixelVault - Local-First Image Privacy & Provenance Suite. Strip personal metadata, preserve copyright & C2PA, verify pixel integrity.">
+    <title>{% block title %}PixelVault — Local-First Image Privacy & Provenance Suite{% endblock %}</title>
+
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts: Inter + Space Grotesk + JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Main Stylesheet -->
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'images/apple-touch-icon.png' %}">
+
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <div class="app-shell">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside class="sidebar" role="navigation" aria-label="Main navigation">
             <div class="brand-header">
                 <div class="brand-logo" aria-hidden="true">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         <path d="M9 12l2 2 4-4"/>
+                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
                     </svg>
                 </div>
                 <div class="brand-meta">
-                    <span class="brand-name">Image Privacy Cleaner</span>
+                    <span class="brand-name">PixelVault</span>
                     <span class="brand-badge">100% LOCAL ENGINE</span>
                 </div>
             </div>
 
             <nav class="side-nav" aria-label="Primary Navigation">
-                <button type="button" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" data-page="dashboard">
-                    <span class="nav-icon">◈</span>
+                <button type="button" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" data-page="dashboard" aria-current="{% if active_page == 'dashboard' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">◈</span>
                     <span>Dashboard</span>
                 </button>
-                <button type="button" class="nav-link {% if active_page == 'upload' %}active{% endif %}" data-page="upload">
-                    <span class="nav-icon">⇧</span>
+                <button type="button" class="nav-link {% if active_page == 'upload' %}active{% endif %}" data-page="upload" aria-current="{% if active_page == 'upload' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">⇧</span>
                     <span>Image Upload</span>
                 </button>
-                <button type="button" class="nav-link {% if active_page == 'analysis' %}active{% endif %}" data-page="analysis">
-                    <span class="nav-icon">◎</span>
+                <button type="button" class="nav-link {% if active_page == 'analysis' %}active{% endif %}" data-page="analysis" aria-current="{% if active_page == 'analysis' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">◎</span>
                     <span>Image Analysis</span>
                 </button>
-                <button type="button" class="nav-link {% if active_page == 'report' %}active{% endif %}" data-page="report">
-                    <span class="nav-icon">▤</span>
+                <button type="button" class="nav-link {% if active_page == 'report' %}active{% endif %}" data-page="report" aria-current="{% if active_page == 'report' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">▤</span>
                     <span>Metadata Report</span>
                 </button>
-                <button type="button" class="nav-link {% if active_page == 'batch' %}active{% endif %}" data-page="batch">
-                    <span class="nav-icon">⚙</span>
+                <button type="button" class="nav-link {% if active_page == 'batch' %}active{% endif %}" data-page="batch" aria-current="{% if active_page == 'batch' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">⚙</span>
                     <span>Batch Processing</span>
                 </button>
-                <button type="button" class="nav-link {% if active_page == 'downloads' %}active{% endif %}" data-page="downloads">
-                    <span class="nav-icon">⇩</span>
+                <button type="button" class="nav-link {% if active_page == 'downloads' %}active{% endif %}" data-page="downloads" aria-current="{% if active_page == 'downloads' %}page{% else %}false{% endif %}">
+                    <span class="nav-icon" aria-hidden="true">⇩</span>
                     <span>Download Center</span>
                 </button>
             </nav>
@@ -54,9 +71,9 @@
             <div class="sidebar-policy-card">
                 <h4>Ethical Provenance Policy</h4>
                 <ul>
-                    <li>✓ Strips GPS, Serials, Owner &amp; Contact</li>
-                    <li>✓ Preserves Copyright, Authorship &amp; License</li>
-                    <li>✓ Preserves C2PA &amp; AI Disclosure</li>
+                    <li>✓ Strips GPS, Serials, Owner & Contact</li>
+                    <li>✓ Preserves Copyright, Authorship & License</li>
+                    <li>✓ Preserves C2PA & AI Disclosure</li>
                     <li>✓ Honest SynthID Status (No Watermark Removal)</li>
                     <li>✓ 100% Lossless Pixel Integrity</li>
                 </ul>
@@ -64,29 +81,35 @@
         </aside>
 
         <!-- Main Workspace -->
-        <main class="main-content">
+        <main class="main-content" role="main">
             <header class="top-bar">
                 <div class="top-bar-title">
-                    <h1 id="pageTitle">Local Image Privacy &amp; Provenance Workspace</h1>
-                    <p class="subtitle">Zero external uploads · Lossless container surgical metadata cleaning · Cryptographic pixel verification</p>
+                    <h1 id="pageTitle">{% block page_title %}Local Image Privacy & Provenance Workspace{% endblock %}</h1>
+                    <p class="subtitle">{% block page_subtitle %}Zero external uploads · Lossless container surgical metadata cleaning · Cryptographic pixel verification{% endblock %}</p>
                 </div>
                 <div class="top-bar-actions">
-                    <span class="status-pill status-local">
-                        <span class="dot"></span> Offline Local Mode Active
+                    <span class="status-pill status-local" aria-live="polite">
+                        <span class="dot" aria-hidden="true"></span>
+                        <span>Offline Local Mode Active</span>
                     </span>
                     <span class="job-pill" id="activeJobBadge">No Active Batch</span>
                 </div>
             </header>
 
+            <!-- CSRF Token Form -->
             <form id="csrfForm" style="display:none;">{% csrf_token %}</form>
 
+            <!-- Page Content -->
             {% block content %}{% endblock %}
         </main>
     </div>
 
     <!-- Toast Notification Container -->
-    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-label="Notifications"></div>
 
+    <!-- Main Application Script -->
     <script src="{% static 'js/app.js' %}"></script>
+
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

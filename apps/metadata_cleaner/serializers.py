@@ -13,6 +13,7 @@ class CleanMetadataRequestSerializer(serializers.Serializer):
     remove_contact_info = serializers.BooleanField(default=True, required=False)
     remove_ai_and_c2pa = serializers.BooleanField(default=False, required=False)
     scrub_pixel_watermark = serializers.BooleanField(default=False, required=False)
+    nuclear_clean = serializers.BooleanField(default=False, required=False)
 
 
 class CleaningLogSerializer(serializers.ModelSerializer):
